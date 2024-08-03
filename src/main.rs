@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-fn generate_public(secp: &Secp256k1<bitcoin::secp256k1::All>, private_key_hex: &str) -> String {
+fn generate_public_address(secp: &Secp256k1<bitcoin::secp256k1::All>, private_key_hex: &str) -> String {
     let private_key = PrivateKey::from_slice(&hex::decode(private_key_hex).unwrap(), Network::Bitcoin).unwrap();
     let public_key = PublicKey::from_private_key(secp, &private_key);
     let address = Address::p2pkh(&public_key, Network::Bitcoin);
@@ -30,15 +30,13 @@ fn find_private_key(
 ) -> Option<String> {
     for private_key in min_range..=max_range {
         let private_key_hex = format!("{:064x}", private_key);
-        let public_address = generate_public(&secp, &private_key_hex);
-
-        // Updates the total number of verified keys
+        let public_address = generate_public_address(&secp, &private_key_hex);
+        
         {
             let mut checked = keys_checked.lock().unwrap();
             *checked += 1;
         }
 
-        // Updates the number of keys scanned in the current interval
         {
             let mut interval_checked = keys_checked_in_interval.lock().unwrap();
             *interval_checked += 1;
@@ -72,7 +70,7 @@ fn find_private_key(
 fn main() {
 
     println!("\x1b[38;2;250;128;114m   ╔═════════════════════════════════════════════════╗");
-    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m         KeryRypper v0.1.0 - Satoshi Quest            \x1b[0m\x1b[38;2;250;128;114m║");
+    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m         KeryRypper v0.1.1 - Satoshi Quest            \x1b[0m\x1b[38;2;250;128;114m║");
     println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m                    by Denzy Legacy                   \x1b[0m\x1b[38;2;250;128;114m║");
     println!("\x1b[38;2;250;128;114m   ╚═════════════════════════════════════════════════╝\x1b[0m");
 
@@ -105,6 +103,7 @@ fn main() {
         let last_report_time_clone = Arc::clone(&last_report_time);
         let keys_checked_in_interval_clone = Arc::clone(&keys_checked_in_interval);
         let start = min_key_range + i * range_per_thread;
+        
         let end = if i == num_threads - 1 {
             max_key_range
         } else {
@@ -130,7 +129,7 @@ fn main() {
         if let Some(private_key) = handle.join().unwrap() {
             println!("\n[+] Private key found: {}", private_key);
             println!("\x1b[1m\x1b[32m[+] WIF\x1b[0m: {}", generate_wif(&private_key));
-            println!("[+] Public address: {}\n", generate_public(&secp, &private_key));
+            println!("[+] Public address: {}\n", generate_public_address(&secp, &private_key));
             return;
         }
     }
