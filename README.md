@@ -1,6 +1,6 @@
 <h1 align="center">KeyRipper</h1>
 
 <p align="center">
-  <img src="https://private-user-images.githubusercontent.com/108025321/354837280-ddd1d2f4-8631-4057-9cf8-711b5cd17309.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MjI3MTEyNjQsIm5iZiI6MTcyMjcxMDk2NCwicGF0aCI6Ii8xMDgwMjUzMjEvMzU0ODM3MjgwLWRkZDFkMmY0LTg2MzEtNDA1Ny05Y2Y4LTcxMWI1Y2QxNzMwOS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjQwODAzJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI0MDgwM1QxODQ5MjRaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT01NzQwZTQ3ZjIyYTQwNjhjZmRhNzg1NDA1MWZmM2UwYjlhMDY1NGUxOGE0NmExNWVkYzAwNjY1OWU2MjYzNTA4JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZhY3Rvcl9pZD0wJmtleV9pZD0wJnJlcG9faWQ9MCJ9.oeNXajtFD7kZhHUSeX8hUIwqKSp9asr9QILJLHROaMU"
+  <img src="https://github.com/user-attachments/assets/120fa396-f5e0-4844-853d-cdcb409bb11f"
        alt="Project Logo" width="550" height="390">
 </p>
