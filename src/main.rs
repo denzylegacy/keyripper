@@ -1,79 +1,18 @@
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::util::key::{PublicKey, PrivateKey};
-use bitcoin::network::constants::Network;
-use bitcoin::util::address::Address;
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-fn generate_public_address(secp: &Secp256k1<bitcoin::secp256k1::All>, private_key_hex: &str) -> String {
-    let private_key = PrivateKey::from_slice(&hex::decode(private_key_hex).unwrap(), Network::Bitcoin).unwrap();
-    let public_key = PublicKey::from_private_key(secp, &private_key);
-    let address = Address::p2pkh(&public_key, Network::Bitcoin);
-    address.to_string()
-}
+mod utils;
+mod key_search_approaches;
 
-fn generate_wif(private_key_hex: &str) -> String {
-    let private_key = PrivateKey::from_slice(&hex::decode(private_key_hex).unwrap(), Network::Bitcoin).unwrap();
-    private_key.to_wif()
-}
-
-fn find_private_key(
-    min_range: u64,
-    max_range: u64,
-    target_address: &str,
-    status_output_timer: u64,
-    secp: Arc<Secp256k1<bitcoin::secp256k1::All>>,
-    keys_checked: Arc<Mutex<u64>>,
-    last_report_time: Arc<Mutex<Instant>>,
-    keys_checked_in_interval: Arc<Mutex<u64>>,
-) -> Option<String> {
-    for private_key in min_range..=max_range {
-        let private_key_hex = format!("{:064x}", private_key);
-        let public_address = generate_public_address(&secp, &private_key_hex);
-        
-        {
-            let mut checked = keys_checked.lock().unwrap();
-            *checked += 1;
-        }
-
-        {
-            let mut interval_checked = keys_checked_in_interval.lock().unwrap();
-            *interval_checked += 1;
-        }
-        
-        let current_time = Instant::now();
-        {
-            let mut last_time = last_report_time.lock().unwrap();
-            if current_time.duration_since(*last_time) >= Duration::from_secs(status_output_timer) {
-                let checked = keys_checked.lock().unwrap();
-                let mut interval_checked = keys_checked_in_interval.lock().unwrap();
-
-                let average_keys_per_second = *interval_checked as f64 / status_output_timer as f64;
-
-                println!("[+] {} computed keys: ~{:.2} keys/s", *checked, average_keys_per_second);
-                
-                *interval_checked = 0;
-
-                *last_time = current_time;
-            }
-        }
-        
-        if public_address == target_address {
-            return Some(private_key_hex);
-        }
-    }
-
-    None
-}
+use utils::utils::introduction;
+use utils::utils::generate_public_address;
+use utils::utils::generate_wif;
+use key_search_approaches::ascending_search::ascending_search;
 
 fn main() {
-
-    println!("\x1b[38;2;250;128;114m   ╔═════════════════════════════════════════════════╗");
-    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m         KeryRypper v0.1.1 - Satoshi Quest            \x1b[0m\x1b[38;2;250;128;114m║");
-    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m                    by Denzy Legacy                   \x1b[0m\x1b[38;2;250;128;114m║");
-    println!("\x1b[38;2;250;128;114m   ╚═════════════════════════════════════════════════╝\x1b[0m");
-
+    introduction();
 
     let min_key_range = 0x80000;
     let max_key_range = 0xfffff;
@@ -111,7 +50,7 @@ fn main() {
         };
 
         let handle = thread::spawn(move || {
-            find_private_key(
+            ascending_search(
                 start, end, 
                 target_address, 
                 status_output_timer, 
