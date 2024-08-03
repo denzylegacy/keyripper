@@ -1,0 +1,8 @@
+[package]
+name = "keyripper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitcoin = "0.29.2"
+hex = "0.4.3"
