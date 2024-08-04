@@ -5,8 +5,8 @@ use std::sync::{Arc, Mutex};
 use crate::utils::utils::generate_public_address;
 
 pub fn ascending_search(
-    min_range: u64,
-    max_range: u64,
+    min_range: u128,
+    max_range: u128,
     target_address: &str,
     status_output_timer: u64,
     secp: Arc<Secp256k1<bitcoin::secp256k1::All>>,
