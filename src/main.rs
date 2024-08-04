@@ -14,10 +14,10 @@ use key_search_approaches::ascending_search::ascending_search;
 fn main() {
     introduction();
 
-    let min_key_range = 0x80000;
-    let max_key_range = 0xfffff;
-    let target_address = "1HsMJxNiV7TLxmoF6uJNkydxPFDog4NQum";
-    let status_output_timer = 10; 
+    let min_key_range: u128 = 0x20000000000000000;
+    let max_key_range: u128 = 0x3ffffffffffffffff;
+    let target_address = "13zb1hQbWVsc2S7ZTZnP2G4undNNpdh5so";
+    let status_output_timer = 10;
 
     println!("[+] Loading...\n");
 
@@ -31,7 +31,7 @@ fn main() {
     let last_report_time = Arc::new(Mutex::new(Instant::now()));
     let keys_checked_in_interval = Arc::new(Mutex::new(0));
 
-    let num_threads = 4;
+    let num_threads = 8;
     let range_per_thread = (max_key_range - min_key_range + 1) / num_threads;
 
     let mut handles = vec![];
