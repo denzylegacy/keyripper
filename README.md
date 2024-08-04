@@ -8,8 +8,6 @@ Private Key Finder: A Rust project designed to search for private keys based on 
   </a>
 </div>
 
-Sure! Here’s a step-by-step guide you can include in your GitHub README:
-
 ## Step-by-Step Guide for Running in Google Colab
 
 1. **Open the Code in Google Colab**  
