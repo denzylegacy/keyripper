@@ -4,5 +4,7 @@ version = "0.1.1"
 edition = "2021"
 
 [dependencies]
+sys-info = "0.9"
+num_cpus = "1.13"
 bitcoin = "0.29.2"
 hex = "0.4.3"

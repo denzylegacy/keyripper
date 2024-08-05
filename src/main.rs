@@ -1,3 +1,4 @@
+
 use bitcoin::secp256k1::Secp256k1;
 use std::time::{Instant};
 use std::sync::{Arc, Mutex};
@@ -7,6 +8,7 @@ mod utils;
 mod key_search_approaches;
 
 use utils::utils::introduction;
+use crate::utils::utils::machine_info;
 use utils::utils::generate_public_address;
 use utils::utils::generate_wif;
 use key_search_approaches::ascending_search::ascending_search;
@@ -14,18 +16,20 @@ use key_search_approaches::ascending_search::ascending_search;
 fn main() {
     introduction();
 
-    let min_key_range = 0x80000;
-    let max_key_range = 0xfffff;
+    let min_key_range: u128 = 0x80000;
+    let max_key_range: u128 = 0xfffff;
     let target_address = "1HsMJxNiV7TLxmoF6uJNkydxPFDog4NQum";
-    let status_output_timer = 10; 
+    let status_output_timer = 10;
 
     println!("[+] Loading...\n");
 
     println!("[+] Hunted address : {}", target_address);
     println!("[+] Initial hex    : {:#X}", min_key_range);
     println!("[+] Final hex      : {:#X}", max_key_range);
-    println!("[+] Status output every {} secconds\n", status_output_timer);
-    
+    println!("[+] Status output every {} secconds", status_output_timer);
+
+    machine_info();
+
     let secp = Arc::new(Secp256k1::new());
     let keys_checked = Arc::new(Mutex::new(0));
     let last_report_time = Arc::new(Mutex::new(Instant::now()));
