@@ -1,12 +1,6 @@
 [package]
 name = "keyripper"
-<<<<<<< Updated upstream
-version = "0.1.1"
-edition = "2021"
 
-[dependencies]
-bitcoin = "0.29.2"
-=======
 version = "0.1.3"
 edition = "2021"
 
@@ -16,7 +10,6 @@ sys-info = "0.9.1"
 num_cpus = "1.16.0"
 rand = "0.8.5"
 bitcoin = "0.32.2"
->>>>>>> Stashed changes
 hex = "0.4.3"
 secp256k1 = "0.27.0"
 rayon = "1.7.0"
