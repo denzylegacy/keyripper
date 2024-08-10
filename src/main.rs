@@ -20,8 +20,8 @@ fn main() {
 
     let config: config::Config = config::Config::load();
 
-    let min_key_range = 0x800;
-    let max_key_range = 0xfff;
+    let min_key_range = 0x20000000000000000;
+    let max_key_range = 0x3ffffffffffffffff;
     let target_address: &str = "1DBaumZxUkM4qMQRt2LVWyFJq5kDtSZQot";
 
     let status_output_timer = 10u64;
