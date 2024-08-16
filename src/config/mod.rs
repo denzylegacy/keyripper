@@ -2,8 +2,8 @@ use dotenv::dotenv;
 use std::env;
 
 pub struct Config {
-    pub num_threads: u128,
-    pub search_approach: u32,
+    pub num_threads: i32,
+    pub search_approach: i32,
     // pub environment: String,
 }
 
@@ -13,11 +13,11 @@ impl Config {
 
         let num_threads = env::var("NUM_THREADS")
             .ok()
-            .and_then(|v| v.parse::<u128>().ok())
+            .and_then(|v| v.parse::<i32>().ok())
             .unwrap_or(1);
         let search_approach = env::var("SEARCH_APPROACH")
             .ok()
-            .and_then(|v| v.parse::<u32>().ok())
+            .and_then(|v| v.parse::<i32>().ok())
             .unwrap_or(0);
         // let environment = env::var("ENVIRONMENT").unwrap_or_else(|_| "".to_string());
 

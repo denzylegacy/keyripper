@@ -1,9 +1,6 @@
 #![allow(unused)]
 
-use bitcoin::network::constants::Network;
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::util::address::Address;
-use bitcoin::util::key::{PrivateKey, PublicKey};
 use num_cpus;
 
 pub fn introduction() {
@@ -63,19 +60,3 @@ pub fn machine_info() {
     }
 }
 
-pub fn generate_public_address(
-    secp: &Secp256k1<bitcoin::secp256k1::All>,
-    private_key_hex: &str,
-) -> String {
-    let private_key: PrivateKey =
-        PrivateKey::from_slice(&hex::decode(private_key_hex).unwrap(), Network::Bitcoin).unwrap();
-    let public_key: PublicKey = PublicKey::from_private_key(secp, &private_key);
-    let address: Address = Address::p2pkh(&public_key, Network::Bitcoin);
-    address.to_string()
-}
-
-pub fn generate_wif(private_key_hex: &str) -> String {
-    let private_key: PrivateKey =
-        PrivateKey::from_slice(&hex::decode(private_key_hex).unwrap(), Network::Bitcoin).unwrap();
-    private_key.to_wif()
-}
