@@ -84,9 +84,9 @@ impl KeySearch {
 
     pub fn private_key_by_public_key(
         &self,
-        target_public_key: &str,
+        public_key_hex: &str,
     ) {
-        let public_key_x = BigUint::from_str_radix(&target_public_key[2..], 16)
+        let public_key_x = BigUint::from_str_radix(&public_key_hex[2..], 16)
             .expect("Error converting public_key_x to a whole number!");
 
         // y^2 = x^3 + ax + b (mod p)
@@ -101,8 +101,8 @@ impl KeySearch {
         let mut public_key_y = math::sqrt_mod_prime(&y_square, &p).expect("Couldn't find a valid modular square root!");
 
         // Checks the public key prefix to choose the correct Y
-        if (target_public_key.starts_with("02") && &public_key_y % 2u8 != BigUint::from(0u32)) ||
-            (target_public_key.starts_with("03") && &public_key_y % 2u8 == BigUint::from(0u32)) {
+        if (public_key_hex.starts_with("02") && &public_key_y % 2u8 != BigUint::from(0u32)) ||
+            (public_key_hex.starts_with("03") && &public_key_y % 2u8 == BigUint::from(0u32)) {
             public_key_y = &p - &public_key_y;
         }
 

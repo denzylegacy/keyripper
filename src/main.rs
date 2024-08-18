@@ -9,7 +9,6 @@ use crate::utils::utils::machine_info;
 use utils::utils::introduction;
 
 use engine::keyripper::{KeySearch, EllipticCurve};
-use engine::secp256k1_impl;
 
 // #[tokio::main]
 fn main() {
@@ -46,6 +45,6 @@ fn main() {
     // }
 
     // Private Key by Public Key
-    let public_key_hex = "033c4a45cbd643ff97d77f41ea37e843648d50fd894b864b0d52febc62f6454f7c";
-    key_search.private_key_by_public_key(public_key_hex);
+    // let public_key_hex = "0233709eb11e0d4439a729f21c2c443dedb727528229713f0065721ba8fa46f00e";
+    // key_search.private_key_by_public_key(public_key_hex);
 }
