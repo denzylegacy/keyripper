@@ -2,29 +2,31 @@ use dotenv::dotenv;
 use std::env;
 
 pub struct Config {
-    pub num_threads: i32,
-    pub search_approach: i32,
-    // pub environment: String,
+    pub process: String,
+    pub num_cores: u8,
+    pub num_threads: u8,
 }
 
 impl Config {
     pub fn load() -> Config {
         dotenv().ok();
 
+        let process = env::var("PROCESS").unwrap_or_else(|_| "".to_string());
+
+        let num_cores = env::var("NUM_CORES")
+            .ok()
+            .and_then(|v| v.parse::<u8>().ok())
+            .unwrap_or(0);
+
         let num_threads = env::var("NUM_THREADS")
             .ok()
-            .and_then(|v| v.parse::<i32>().ok())
-            .unwrap_or(1);
-        let search_approach = env::var("SEARCH_APPROACH")
-            .ok()
-            .and_then(|v| v.parse::<i32>().ok())
+            .and_then(|v| v.parse::<u8>().ok())
             .unwrap_or(0);
-        // let environment = env::var("ENVIRONMENT").unwrap_or_else(|_| "".to_string());
 
         Config {
+            process,
             num_threads,
-            search_approach,
-            // environment,
+            num_cores,
         }
     }
 }

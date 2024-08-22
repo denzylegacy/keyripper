@@ -1,13 +1,26 @@
 #![allow(unused)]
 
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
+use crate::data::Address;
 use bitcoin::secp256k1::Secp256k1;
 use num_cpus;
 
 pub fn introduction() {
     println!("\x1b[38;2;250;128;114m   ╔═════════════════════════════════════════════════╗");
-    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m           KeryRypper v0.1.2 - Satoshi Quest          \x1b[0m\x1b[38;2;250;128;114m║");
+    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m           KeryRypper v0.1.3 - Satoshi Quest          \x1b[0m\x1b[38;2;250;128;114m║");
     println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m                      by Denzy Legacy                 \x1b[0m\x1b[38;2;250;128;114m║");
     println!("\x1b[38;2;250;128;114m   ╚═════════════════════════════════════════════════╝\x1b[0m");
+}
+
+pub fn import_addresses(file_path: &str) -> Result<Vec<Address>, Box<dyn std::error::Error>> {
+    let file = File::open(Path::new(file_path))?;
+    let reader = BufReader::new(file);
+
+    let addresses: Vec<Address> = serde_json::from_reader(reader)?;
+
+    Ok(addresses)
 }
 
 pub fn machine_info() {

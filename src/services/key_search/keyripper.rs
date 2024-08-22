@@ -11,7 +11,7 @@ use bitcoin::secp256k1::{All, Secp256k1, SecretKey};
 use k256::{AffinePoint, EncodedPoint, ProjectivePoint, Scalar};
 use k256::ecdsa::{SigningKey, VerifyingKey};
 
-// use crate::engine::bsgs::{BSGS, Point};
+// use crate::services::bsgs::{BSGS, Point};
 
 use std::collections::HashMap;
 use hex;
@@ -21,8 +21,8 @@ use k256::elliptic_curve::sec1::{FromEncodedPoint};
 use libsecp256k1::curve::Field;
 use num_traits::real::Real;
 
-use crate::engine::math;
-use crate::engine::bsgs;
+use crate::services::key_search::math;
+use crate::services::key_search::bsgs;
 
 pub struct KeySearch {
     secp: Secp256k1<All>,
@@ -125,7 +125,7 @@ impl KeySearch {
 
         /// x and y
 
-        // Obtendo coordenadas afins
+        // Coordenadas afins
         let (x_decimal, y_decimal) = math::affine_coordinates(
             &encoded_point,
             target_public_key_point,
