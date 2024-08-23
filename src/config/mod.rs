@@ -23,6 +23,18 @@ impl Config {
             .and_then(|v| v.parse::<u8>().ok())
             .unwrap_or(0);
 
+        if !process.is_empty() {
+            println!("[+] Mode: {:?}", process);
+        }
+
+        if num_cores != 0 {
+            println!("[+] Logical Cores: {:?}", num_cores);
+        }
+
+        if num_threads != 0 {
+            println!("[+] Threads: {:?}", num_threads);
+        }
+
         Config {
             process,
             num_threads,

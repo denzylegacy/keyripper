@@ -21,6 +21,8 @@ use k256::elliptic_curve::sec1::{FromEncodedPoint};
 use libsecp256k1::curve::Field;
 use num_traits::real::Real;
 
+use crate::config::Config;
+use crate::data::Address as TargetAddress;
 use crate::services::key_search::math;
 use crate::services::key_search::bsgs;
 
@@ -57,33 +59,11 @@ impl KeySearch {
         }
     }
 
-    pub fn compressed_public_key_by_private_key_hex(&self, private_key_hex: &str) -> Option<String> {
-        if private_key_hex.is_empty() {
-            error!("No private key hexadecimal was provided!");
-            return None;
-        }
-
-        let private_key_bytes = Vec::from_hex(private_key_hex).ok()?;
-
-        let private_key_field_bytes = FieldBytes::<k256::Secp256k1>::try_from(
-            private_key_bytes.as_slice()
-        ).ok()?;
-
-        let signing_key = SigningKey::from_bytes(&private_key_field_bytes).ok()?;
-
-        let verifying_key = VerifyingKey::from(&signing_key);
-
-        let public_key_bytes = verifying_key.to_encoded_point(true).as_bytes().to_vec();
-        let compressed_public_key_hex = hex::encode(public_key_bytes);
-
-        info!("Public Key (compressed): {}", compressed_public_key_hex);
-        println!("Public Key (compressed): {}", compressed_public_key_hex);
-
-        Some(compressed_public_key_hex)
-    }
-
     pub fn private_key_by_public_key(
         &self,
+        hardware_info: &(),
+        config: &Config,
+        addresses: &Vec<TargetAddress>,
         public_key_hex: &str,
     ) {
         let public_key_x = BigUint::from_str_radix(&public_key_hex[2..], 16)
@@ -171,5 +151,30 @@ impl KeySearch {
         let private_key: PrivateKey =
             PrivateKey::from_slice(&hex::decode(private_key_hex).unwrap(), Network::Bitcoin).unwrap();
         private_key.to_wif()
+    }
+
+    pub fn compressed_public_key_by_private_key_hex(&self, private_key_hex: &str) -> Option<String> {
+        if private_key_hex.is_empty() {
+            error!("No private key hexadecimal was provided!");
+            return None;
+        }
+
+        let private_key_bytes = Vec::from_hex(private_key_hex).ok()?;
+
+        let private_key_field_bytes = FieldBytes::<k256::Secp256k1>::try_from(
+            private_key_bytes.as_slice()
+        ).ok()?;
+
+        let signing_key = SigningKey::from_bytes(&private_key_field_bytes).ok()?;
+
+        let verifying_key = VerifyingKey::from(&signing_key);
+
+        let public_key_bytes = verifying_key.to_encoded_point(true).as_bytes().to_vec();
+        let compressed_public_key_hex = hex::encode(public_key_bytes);
+
+        info!("Public Key (compressed): {}", compressed_public_key_hex);
+        println!("Public Key (compressed): {}", compressed_public_key_hex);
+
+        Some(compressed_public_key_hex)
     }
 }
