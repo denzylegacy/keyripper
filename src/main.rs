@@ -6,10 +6,11 @@ mod services;
 mod utils;
 mod data;
 
-use crate::utils::utils::{machine_info, import_addresses};
+use crate::utils::utils::{machine_info, import_addresses, show_hardware_info, HardwareInfo};
 use utils::utils::introduction;
 
 use services::key_search::keyripper::{KeySearch, EllipticCurve};
+use crate::config::Config;
 use crate::data::Address;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,17 +18,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     introduction();
 
-    println!("[+] Loading...\n");
+    let hardware = match machine_info() {
+        Ok(hardware) => {
+            show_hardware_info(&hardware);
+        }
+        Err(e) => {
+            eprintln!("{}", e);
+        }
+    };
 
-    let config: config::Config = config::Config::load();
+    println!("[+] Preconfigured Processes");
+
+    let config = Config::load();
 
     let addresses = import_addresses("./src/data/addresses.json")?;
 
     match config.process.as_str() {
         "SERVER" => server(),
-        "SEARCH_PRIV_KEY" => search_private_key_by_address(&addresses),
+        "SEARCH_PRIV_KEY_BY_ADDR" => search_private_key_by_address(&addresses),
         "SEARCH_PUB_KEY" => search_public_key_by_private_key(&addresses),
-        _ => search_private_key_by_public_key(&addresses),
+        _ => search_private_key_by_public_key(&hardware, config, &addresses),
     }
 
     Ok(())
@@ -43,15 +53,21 @@ async fn server() {
 ///
 /// This process uses the `KeySearch` class to find the private key
 /// corresponding to a given public key.
-fn search_private_key_by_public_key(addresses: &Vec<Address>) {
+fn search_private_key_by_public_key(
+    hardware_info: &(),
+    config: Config,
+    addresses: &Vec<Address>
+) {
     for i in (5..=addresses.len()).step_by(5) {
         if let Some(address) = addresses.get(i - 1) {
             if !address.solved {
-                println!("[+] {:?}: {}", address.address, address.bit_range);
+                println!("\n[+] Activating Private Key from Public Key search");
+                println!("[+] Address: {:?}: {}", address.address, address.bit_range);
 
                 let key_search = KeySearch::new();
 
-                key_search.private_key_by_public_key(address.public_key_hex.as_str());
+                key_search.private_key_by_public_key(&hardware_info, &config, &address);
+
                 break;
             }
         }
@@ -67,7 +83,7 @@ fn search_public_key_by_private_key(addresses: &Vec<Address>) {
     for i in 1..=addresses.len() {
         if let Some(address) = addresses.get(i) {
             if !address.solved {
-                println!("[+] {:?}: {}", address.address, address.bit_range);
+                println!("\n[+] {:?}: {}", address.address, address.bit_range);
 
                 let key_search = KeySearch::new();
 
@@ -78,7 +94,6 @@ fn search_public_key_by_private_key(addresses: &Vec<Address>) {
                 } else {
                     println!("Public key not found!");
                 }
-                break;
             }
         }
     }
@@ -86,5 +101,5 @@ fn search_public_key_by_private_key(addresses: &Vec<Address>) {
 
 fn search_private_key_by_address(addresses: &Vec<Address>) {
     let status_output_timer = 10u64;
-    println!("[+] Status output every {} seconds", status_output_timer);
+    println!("\n[+] Status output every {} seconds", status_output_timer);
 }
