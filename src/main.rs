@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match config.process.as_str() {
         "SERVER" => server(),
-        "SEARCH_PRIV_KEY" => search_private_key_by_address(&addresses),
+        "SEARCH_PRIV_KEY_BY_ADDR" => search_private_key_by_address(&addresses),
         "SEARCH_PUB_KEY" => search_public_key_by_private_key(&addresses),
         _ => search_private_key_by_public_key(&hardware, config, &addresses),
     }
@@ -66,15 +66,9 @@ fn search_private_key_by_public_key(
 
                 let key_search = KeySearch::new();
 
-                // let public_key_hex =
-                //     "031a746c78f72754e0be046186df8a20cdce5c79b2eda76013c647af08d306e49e";  // #21
-                // 00000000000000000000000000000000000000000000000000000000001ba534
+                key_search.private_key_by_public_key(&hardware_info, &config, &address);
 
-                key_search.private_key_by_public_key(
-                    &hardware_info, &config, &addresses, address.public_key_hex.as_str()
-                );
-
-                // break;
+                break;
             }
         }
     }
@@ -92,10 +86,6 @@ fn search_public_key_by_private_key(addresses: &Vec<Address>) {
                 println!("\n[+] {:?}: {}", address.address, address.bit_range);
 
                 let key_search = KeySearch::new();
-
-                // let private_key_hex =
-                // "0000000000000000000000000000000000000000000000000000000000556e52";  // #23
-                // 03f82710361b8b81bdedb16994f30c80db522450a93e8e87eeb07f7903cf28d04b
 
                 if let Some(public_key) = key_search.compressed_public_key_by_private_key_hex(
                     address.private_key_hex.as_str()

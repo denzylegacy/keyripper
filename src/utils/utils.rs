@@ -10,7 +10,7 @@ use num_cpus;
 
 pub fn introduction() {
     println!("\x1b[38;2;250;128;114m   ╔═════════════════════════════════════════════════╗");
-    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m          KeryRypper v0.1.3 - Satoshi Quest           \x1b[0m\x1b[38;2;250;128;114m║");
+    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m          KeryRypper v0.2.0 - Satoshi Quest           \x1b[0m\x1b[38;2;250;128;114m║");
     println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m                     by Denzy Legacy                  \x1b[0m\x1b[38;2;250;128;114m║");
     println!("\x1b[38;2;250;128;114m   ╚═════════════════════════════════════════════════╝\x1b[0m");
 }
