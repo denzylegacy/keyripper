@@ -21,6 +21,7 @@ use k256::elliptic_curve::sec1::{FromEncodedPoint};
 use libsecp256k1::curve::Field;
 use num_traits::real::Real;
 
+use crate::utils::utils::{HardwareInfo};
 use crate::config::Config;
 use crate::data::Address as TargetAddress;
 use crate::services::key_search::math;
@@ -57,29 +58,30 @@ impl KeySearch {
 
     pub fn private_key_by_public_key(
         &self,
-        hardware_info: &(),
+        hardware_info: &HardwareInfo,
         config: &Config,
         address: &TargetAddress,
     ) {
-        // y^2 = x^3 + ax + b (mod p)
-        let a = BigUint::from(0u32); // a = 0 -> SECP256k1
-        let b = BigUint::from(7u32); // b = 7 -> SECP256k1
+        // Configuração da curva elíptica SECP256k1
+        let a = BigUint::from(0u32);
+        let b = BigUint::from(7u32);
         let p = BigUint::from_str_radix(
             "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F", 16
         ).unwrap();
 
+        // Recuperação da chave pública
         let public_key_x = BigUint::from_str_radix(
             &address.public_key_hex.as_str()[2..], 16)
-            .expect("Error converting public_key_x to a whole number!");
+            .expect("Erro ao converter public_key_x para número inteiro!");
 
         let mut y_square = (
             &public_key_x * &public_key_x * &public_key_x + &a * &public_key_x + &b
         ) % &p;
 
         let mut public_key_y = math::sqrt_mod_prime(&y_square, &p)
-            .expect("Couldn't find a valid modular square root!");
+            .expect("Não foi possível encontrar uma raiz quadrada modular válida!");
 
-        // Checks the public key prefix to choose the correct Y
+        // Verificação do prefixo da chave pública
         if (address.public_key_hex.as_str().starts_with("02") &&
             &public_key_y % 2u8 != BigUint::from(0u32)) ||
             (address.public_key_hex.as_str().starts_with("03") &&
@@ -87,39 +89,41 @@ impl KeySearch {
             public_key_y = &p - &public_key_y;
         }
 
-        // Public key point on the curve
+        // Criação do ponto da chave pública na curva
         let x_bytes = public_key_x.to_bytes_be();
         let y_bytes = public_key_y.to_bytes_be();
 
         let mut encoded_point = Vec::with_capacity(65);
-        encoded_point.push(0x04); // Uncompressed Prefix
+        encoded_point.push(0x04); // Prefixo não comprimido
         encoded_point.extend_from_slice(&x_bytes);
         encoded_point.extend_from_slice(&y_bytes);
 
         let encoded_point = EncodedPoint::from_bytes(&encoded_point)
-            .expect("Failed to create EncodedPoint!");
+            .expect("Falha ao criar EncodedPoint!");
         let target_public_key_point = ProjectivePoint::from_encoded_point(&encoded_point)
-            .expect("Failed to create public key point");
+            .expect("Falha ao criar o ponto da chave pública");
 
-        // Convert hex range to decimal
+        // Conversão do intervalo hexadecimal para decimal
         let start_range = BigUint::from_str_radix(
             address.private_key_range_start.as_str(), 16
-        ).expect("Invalid start range");
+        ).expect("Intervalo inicial inválido");
 
         let end_range = BigUint::from_str_radix(
             address.private_key_range_end.as_str(), 16
-        ).expect("Invalid end range");
+        ).expect("Intervalo final inválido");
 
         let interval_size = &end_range - &start_range + BigUint::from(1u32);
-        let max_steps = 2_usize.pow((interval_size.bits() / 2) as u32); // Calibrated max_steps
+        let max_steps = 2_usize.pow((interval_size.bits() / 2) as u32); // max_steps calibrado
 
         let start_time = std::time::Instant::now();
         let mut total_steps_tried = 0;
         let mut private_key_integer = None;
 
-        // Iterate over the range of private keys
+        // Iteração sobre o intervalo de chaves privadas
         let mut current_start = start_range.clone();
         while current_start <= end_range {
+            println!("[+] Tentando intervalo: {} - {}", current_start, &current_start + max_steps);
+
             let key = bsgs::bsgs(
                 &target_public_key_point, &ProjectivePoint::GENERATOR, &current_start, max_steps
             );
@@ -130,22 +134,21 @@ impl KeySearch {
                 break;
             }
 
-            println!("[+] Trying range: {} - {}", current_start, &current_start + max_steps);
             current_start += max_steps;
         }
 
         if let Some(key) = private_key_integer {
             let private_key_hex = format!("{:064x}", key);
-            println!("Private key found: {}", private_key_hex);
+            println!("Chave privada encontrada: {}", private_key_hex);
             println!("WIF: {}", KeySearch::wif_by_private_key_hex(&private_key_hex));
-            println!("Public address: {:?}", self.compressed_public_key_by_private_key_hex(&private_key_hex));
+            println!("Endereço público: {:?}", self.compressed_public_key_by_private_key_hex(&private_key_hex));
         } else {
-            println!("Private key not found within the given range.");
+            println!("Chave privada não encontrada dentro do intervalo fornecido.");
         }
 
-        println!("Elapsed time: {:?}", start_time.elapsed());
+        println!("Tempo decorrido: {:?}", start_time.elapsed());
+        println!("Total de passos tentados: {}", total_steps_tried);
     }
-
 
     pub fn public_key_address_by_private_key_hex(
         secp: Secp256k1<All>,

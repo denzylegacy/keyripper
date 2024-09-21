@@ -495,7 +495,7 @@
         "PercentOfRange": 17.07,
         "ResolutionDate": "2015-01-17",
         "Solver": "1HtaAw",
-        "Solved": true
+        "Solved": false
     },
     {
         "Address": 36,
@@ -923,13 +923,13 @@
         "PrivateKeyRange": "20000000000000000...3ffffffffffffffff",
         "PrivateKeyRangeStart": "20000000000000000",
         "PrivateKeyRangeEnd": "3ffffffffffffffff",
-        "PrivateKey(HEX)": "Unknown",
+        "PrivateKey(HEX)": "000000000000000000000000000000000000000000000002832ed74f2b5e35ee",
         "PublicKey(HEX)": "Unknown",
         "BitcoinAddress": "13zb1hQbWVsc2S7ZTZnP2G4undNNpdh5so",
         "PercentOfRange": 0.0,
         "ResolutionDate": "Unknown",
         "Solver": "Unknown",
-        "Solved": false
+        "Solved": true
     },
     {
         "Address": 67,

@@ -11,17 +11,13 @@ pub fn bsgs(
     start: &BigUint,
     max_steps: usize,
 ) -> Option<BigUint> {
-
     let mut baby_steps = HashMap::new();
-    // let mut current = ProjectivePoint::IDENTITY;
 
-    // BigUint -> u64 -> Scalar
-    let start_scalar = Scalar::from(start.to_u64().expect("Conversion to u64 failed"));
+    let start_scalar = Scalar::from(start.to_u64().expect("Falha na conversão para u64"));
     let mut current = g * &start_scalar;
 
-    // BigUint -> u64 -> Scalar
     let max_steps_scalar_value = BigUint::from(max_steps as u64)
-        .to_u64().expect("Conversion to u64 failed");
+        .to_u64().expect("Falha na conversão para u64");
     let max_steps_scalar = Scalar::from(max_steps_scalar_value);
 
     // Baby-step
@@ -29,18 +25,19 @@ pub fn bsgs(
         let affine_current = current.to_affine();
         let (x_decimal, y_decimal) = to_biguint_from_affine_point(&affine_current);
         baby_steps.insert((x_decimal, y_decimal), i);
-        current += *g; // + g in projective form
+        current += *g;
     }
 
     // Giant-step
-    let giant_stride = g * &max_steps_scalar; // multiply in projective space
+    let giant_stride = g * &max_steps_scalar;
     let mut current = target_point.clone();
 
     for j in 0..max_steps {
         let affine_current = current.to_affine();
         let (x_decimal, y_decimal) = to_biguint_from_affine_point(&affine_current);
         if let Some(i) = baby_steps.get(&(x_decimal, y_decimal)) {
-            return Some(BigUint::from(j as u64) * BigUint::from(max_steps as u64) + BigUint::from(*i as u64));
+            let result = BigUint::from(j as u64) * BigUint::from(max_steps as u64) + BigUint::from(*i as u64) + start.clone();
+            return Some(result);
         }
         current -= giant_stride;
     }
