@@ -18,12 +18,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     introduction();
 
-    let hardware = match machine_info() {
+    let hardware_info = match machine_info() {
         Ok(hardware) => {
             show_hardware_info(&hardware);
+            hardware
         }
         Err(e) => {
             eprintln!("{}", e);
+            return Ok(());
         }
     };
 
@@ -34,19 +36,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addresses = import_addresses("./src/data/addresses.json")?;
 
     match config.process.as_str() {
-        "SERVER" => server(),
         "SEARCH_PRIV_KEY_BY_ADDR" => search_private_key_by_address(&addresses),
         "SEARCH_PUB_KEY" => search_public_key_by_private_key(&addresses),
-        _ => search_private_key_by_public_key(&hardware, config, &addresses),
+        _ => search_private_key_by_public_key(&hardware_info, config, &addresses),
     }
 
     Ok(())
-}
-
-#[tokio::main]
-async fn server() {
-    // Starts the controller server
-    services::server::server::start_server().await;
 }
 
 /// Executes the process of searching for a private key by a public key.
@@ -54,7 +49,7 @@ async fn server() {
 /// This process uses the `KeySearch` class to find the private key
 /// corresponding to a given public key.
 fn search_private_key_by_public_key(
-    hardware_info: &(),
+    hardware_info: &HardwareInfo,
     config: Config,
     addresses: &Vec<Address>
 ) {
@@ -63,6 +58,12 @@ fn search_private_key_by_public_key(
             if !address.solved {
                 println!("\n[+] Activating Private Key from Public Key search");
                 println!("[+] Address: {:?}: {}", address.address, address.bit_range);
+
+                /// Divide the processor by the core numbers and the key range
+
+                println!("\n&hardware_info.logical_cores {:?}", hardware_info.logical_cores);
+                println!("&config.num_cores {:?}\n", config.num_cores);
+                println!("&config.num_threads {:?}\n", config.num_threads);
 
                 let key_search = KeySearch::new();
 
