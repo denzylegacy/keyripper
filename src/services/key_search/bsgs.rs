@@ -11,13 +11,16 @@ pub fn bsgs(
     start: &BigUint,
     max_steps: usize,
 ) -> Option<BigUint> {
+
+    println!("start: {:?}, max_steps: {:?}", start, max_steps);
+
     let mut baby_steps = HashMap::new();
 
-    let start_scalar = Scalar::from(start.to_u64().expect("Falha na conversão para u64"));
+    let start_scalar = Scalar::from(start.to_u64().expect("Failed to convert to u64"));
     let mut current = g * &start_scalar;
 
     let max_steps_scalar_value = BigUint::from(max_steps as u64)
-        .to_u64().expect("Falha na conversão para u64");
+        .to_u64().expect("Failed to convert to u64");
     let max_steps_scalar = Scalar::from(max_steps_scalar_value);
 
     // Baby-step
