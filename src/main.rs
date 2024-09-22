@@ -63,7 +63,7 @@ fn search_private_key_by_public_key(
 
                 key_search.private_key_by_public_key(&hardware_info, &config, &address);
 
-                break;
+                // break;
             }
         }
     }

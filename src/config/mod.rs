@@ -5,6 +5,8 @@ pub struct Config {
     pub process: String,
     pub num_cores: usize,
     pub num_threads: usize,
+    pub server_url: String,
+    pub api_auth_token: String
 }
 
 impl Config {
@@ -23,6 +25,11 @@ impl Config {
             .and_then(|v| v.parse::<usize>().ok())
             .unwrap_or(0);
 
+        let server_url = env::var("SERVER_URL").unwrap_or_else(|_| "".to_string());
+
+        let api_auth_token = env::var("API_AUTH_TOKEN")
+            .unwrap_or_else(|_| "".to_string());
+
         if !process.is_empty() {
             println!("[+] Mode: {:?}", process);
         }
@@ -35,10 +42,16 @@ impl Config {
             println!("[+] Threads: {:?}", num_threads);
         }
 
+        if !process.is_empty() {
+            println!("[+] Server URL: {:?}", server_url);
+        }
+
         Config {
             process,
             num_threads,
             num_cores,
+            server_url,
+            api_auth_token
         }
     }
 }

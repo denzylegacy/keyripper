@@ -10,6 +10,7 @@ use bitcoin::secp256k1::{All, Secp256k1, SecretKey};
 use k256::{AffinePoint, EncodedPoint, ProjectivePoint, Scalar};
 use k256::ecdsa::{SigningKey, VerifyingKey};
 use std::collections::HashMap;
+use std::error::Error;
 use hex;
 use k256::elliptic_curve::group::GroupEncoding;
 use k256::elliptic_curve::point::AffineCoordinates;
@@ -26,6 +27,9 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 use std::thread;
 use rand::Rng;
+use reqwest::Client;
+use serde::Serialize;
+use tokio::runtime::Runtime;
 
 pub struct KeySearch {
     secp: Secp256k1<All>,
@@ -36,6 +40,14 @@ pub struct KeySearch {
 pub struct EllipticCurve {
     pub g: ProjectivePoint,
     pub order: [u8; 32],  // BigUint
+}
+
+#[derive(Serialize)]
+pub struct Payload {
+    pub _bit_range: String,
+    pub _private_key_hex: String,
+    pub _wif: String,
+    pub _public_address: String,
 }
 
 impl KeySearch {
@@ -170,7 +182,7 @@ impl KeySearch {
                         .unwrap_or(std::usize::MAX);
 
                     println!(
-                        "[+] Thread {:?} buscando: {} - {}",
+                        "[+] Thread {:?} searching: {} - {}",
                         thread::current().id(), current_start, current_end
                     );
 
@@ -203,15 +215,24 @@ impl KeySearch {
 
         if let Ok(key) = rx.recv() {
             let private_key_hex = format!("{:064x}", key);
-            println!("Private key found: {}", private_key_hex);
-            println!(
-                "WIF: {}",
-                KeySearch::wif_by_private_key_hex(&private_key_hex)
-            );
-            println!(
-                "Public address: {:?}",
-                self.compressed_public_key_by_private_key_hex(&private_key_hex)
-            );
+
+            println!("\nPrivate Key Found! <{}>", private_key_hex);
+
+            let payload = Payload {
+                _bit_range: (&address.bit_range.as_str()).parse().unwrap(),
+                _private_key_hex: private_key_hex.clone(),
+                _wif: KeySearch::wif_by_private_key_hex(&private_key_hex),
+                _public_address: self.compressed_public_key_by_private_key_hex(
+                    &private_key_hex).unwrap().to_string(),
+            };
+
+            if let Err(e) = self.server_bridge(
+                &config.server_url, &config.api_auth_token, &payload) {
+                eprintln!("Failed to send the data: {}", e);
+            } else {
+                println!("Data successfully sent to the server.");
+            }
+
         } else {
             println!("Private key not found within the given range.");
         }
@@ -260,8 +281,26 @@ impl KeySearch {
         let public_key_bytes = verifying_key.to_encoded_point(true).as_bytes().to_vec();
         let compressed_public_key_hex = hex::encode(public_key_bytes);
 
-        // println!("Public Key (compressed): {}", compressed_public_key_hex);
-
         Some(compressed_public_key_hex)
+    }
+
+    pub fn server_bridge(
+        &self,
+        url: &str,
+        token: &str,
+        payload: &Payload,
+    ) -> Result<reqwest::Response, Box<dyn Error>> {
+        let client = Client::new();
+        let rt = Runtime::new()?;
+
+        let response = rt.block_on(async {
+            client.post(url)
+                .json(&payload)
+                .header("Authorization", format!("Bearer {}", token))
+                .send()
+                .await
+        })?;
+
+        Ok(response)
     }
 }
