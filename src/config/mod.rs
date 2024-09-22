@@ -3,8 +3,8 @@ use std::env;
 
 pub struct Config {
     pub process: String,
-    pub num_cores: u8,
-    pub num_threads: u8,
+    pub num_cores: usize,
+    pub num_threads: usize,
 }
 
 impl Config {
@@ -15,12 +15,12 @@ impl Config {
 
         let num_cores = env::var("NUM_CORES")
             .ok()
-            .and_then(|v| v.parse::<u8>().ok())
+            .and_then(|v| v.parse::<usize>().ok())
             .unwrap_or(0);
 
         let num_threads = env::var("NUM_THREADS")
             .ok()
-            .and_then(|v| v.parse::<u8>().ok())
+            .and_then(|v| v.parse::<usize>().ok())
             .unwrap_or(0);
 
         if !process.is_empty() {

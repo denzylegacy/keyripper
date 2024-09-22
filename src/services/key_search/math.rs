@@ -1,7 +1,6 @@
 use num_bigint::BigUint;
 use num_traits::One;
 use k256::{AffinePoint, EncodedPoint, ProjectivePoint, Scalar};
-use k256::elliptic_curve::consts::U32;
 use k256::elliptic_curve::group::GroupEncoding;
 
 pub(crate) fn sqrt_mod_prime(y_square: &BigUint, p: &BigUint) -> Option<BigUint> {
@@ -35,14 +34,10 @@ pub fn affine_coordinates(
 
     let x_decimal = BigUint::from_bytes_be(x_bytes).to_str_radix(10);
 
-    // println!("target_public_key_point x: {}", x_decimal);
-
     /// y
 
     let y_bytes = public_key_y.to_bytes_be();
     let y_decimal = BigUint::from_bytes_be(&y_bytes).to_str_radix(10);
-
-    // println!("target_public_key_point y: {}", y_decimal);
 
     (x_decimal.parse().unwrap(), y_decimal.parse().unwrap())
 }
