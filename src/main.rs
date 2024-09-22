@@ -59,8 +59,6 @@ fn search_private_key_by_public_key(
                 println!("\n[+] Activating Private Key from Public Key search");
                 println!("[+] Address: {:?}: {}", address.address, address.bit_range);
 
-                println!("&config.num_threads {:?}\n", config.num_threads);
-
                 let key_search = KeySearch::new();
 
                 key_search.private_key_by_public_key(&hardware_info, &config, &address);

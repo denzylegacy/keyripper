@@ -22,6 +22,11 @@ use crate::data::Address as TargetAddress;
 use crate::services::key_search::math;
 use crate::services::key_search::bsgs;
 
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc;
+use std::thread;
+use rand::Rng;
+
 pub struct KeySearch {
     secp: Secp256k1<All>,
     curve: EllipticCurve,
@@ -57,26 +62,28 @@ impl KeySearch {
         config: &Config,
         address: &TargetAddress,
     ) {
-        // Configuração da curva elíptica SECP256k1
+        let start_time = std::time::Instant::now();
+
+        // Elliptic Curve Configuration SECP256k1
         let a = BigUint::from(0u32);
         let b = BigUint::from(7u32);
         let p = BigUint::from_str_radix(
             "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F", 16
         ).unwrap();
 
-        // Recuperação da chave pública
+        // Public key recovery
         let public_key_x = BigUint::from_str_radix(
-            &address.public_key_hex.as_str()[2..], 16)
-            .expect("Erro ao converter public_key_x para número inteiro!");
+            &address.public_key_hex.as_str()[2..], 16
+        ).expect("Error converting public_key_x to whole number!");
 
         let mut y_square = (
             &public_key_x * &public_key_x * &public_key_x + &a * &public_key_x + &b
         ) % &p;
 
         let mut public_key_y = math::sqrt_mod_prime(&y_square, &p)
-            .expect("Não foi possível encontrar uma raiz quadrada modular válida!");
+            .expect("Couldn't find a valid modular square root!");
 
-        // Verificação do prefixo da chave pública
+        // Public Key Prefix Verification
         if (address.public_key_hex.as_str().starts_with("02") &&
             &public_key_y % 2u8 != BigUint::from(0u32)) ||
             (address.public_key_hex.as_str().starts_with("03") &&
@@ -84,93 +91,117 @@ impl KeySearch {
             public_key_y = &p - &public_key_y;
         }
 
-        // Criação do ponto da chave pública na curva
+        // Creating the public key point on the curve
         let x_bytes = public_key_x.to_bytes_be();
         let y_bytes = public_key_y.to_bytes_be();
 
         let mut encoded_point = Vec::with_capacity(65);
-        encoded_point.push(0x04); // Prefixo não comprimido
+        encoded_point.push(0x04); // Uncompressed Prefix
         encoded_point.extend_from_slice(&x_bytes);
         encoded_point.extend_from_slice(&y_bytes);
 
         let encoded_point = EncodedPoint::from_bytes(&encoded_point)
-            .expect("Falha ao criar EncodedPoint!");
+            .expect("Failed to create EncodedPoint");
         let target_public_key_point = ProjectivePoint::from_encoded_point(&encoded_point)
-            .expect("Falha ao criar o ponto da chave pública");
+            .expect("Failed to create public key point");
 
-        // Conversion of hexadecimal range to decimal
+        // Converting the hexadecimal range to decimal
         let start_range = BigUint::from_str_radix(
             address.private_key_range_start.as_str(), 16
-        ).expect("Invalid start range");
+        ).expect("Invalid Start Range");
 
         let end_range = BigUint::from_str_radix(
             address.private_key_range_end.as_str(), 16
-        ).expect("Invalid end range");
+        ).expect("Invalid End Range");
 
-        let total_range = &end_range - &start_range + BigUint::from(1u32);
+        let total_range = &end_range - &start_range + BigUint::one();
 
-        // Set the subrange size (maximum 1,000,000)
-        let subrange_size = BigUint::from(10_000_000_000u64);
+        // Subrange Size
+        let subrange_size = BigUint::from(100_000_000_000u64);
 
-        let start_time = std::time::Instant::now();
-        let mut total_steps_tried = 0;
-        let mut private_key_integer = None;
+        let current_position = Arc::new(Mutex::new(start_range.clone()));
+        let target_public_key_point = Arc::new(target_public_key_point);
+        let total_steps_tried = Arc::new(Mutex::new(0usize));
+        let private_key_integer = Arc::new(Mutex::new(None));
 
-        let mut rng = rand::thread_rng();
+        let (tx, rx) = mpsc::channel();
+        let mut threads = vec![];
 
-        // Iterate until the private key is found, or you decide to stop
-        while private_key_integer.is_none() {
-            let current_start;
-            let mut current_end;
+        for _ in 0..config.num_threads {
+            let tx = tx.clone();
+            let current_position = Arc::clone(&current_position);
+            let end_range = end_range.clone();
+            let subrange_size = subrange_size.clone();
+            let target_public_key_point = Arc::clone(&target_public_key_point);
+            let total_steps_tried = Arc::clone(&total_steps_tried);
+            let private_key_integer = Arc::clone(&private_key_integer);
 
-            // Check if the total range is smaller than the subrange size
-            if total_range <= subrange_size {
-                current_start = start_range.clone();
-                current_end = end_range.clone();
-            } else {
-                // Calculate the maximum possible random start point
-                let max_random_start = &total_range - &subrange_size;
+            let thread = thread::spawn(move || {
+                loop {
+                    {
+                        if private_key_integer.lock().unwrap().is_some() {
+                            break;
+                        }
+                    }
 
-                // Generate a random offset within the allowable range
-                let random_offset = rng.gen_biguint_below(&max_random_start);
+                    let (current_start, current_end) = {
+                        let mut pos = current_position.lock().unwrap();
+                        if *pos > end_range {
+                            break;
+                        }
 
-                // Set the current subrange start and end
-                current_start = &start_range + &random_offset;
-                current_end = &current_start + &subrange_size - BigUint::from(1u32);
+                        let current_start = pos.clone();
+                        let potential_end = &current_start + &subrange_size - BigUint::one();
 
-                // Ensure the end doesn't exceed the main range
-                if current_end > end_range {
-                    current_end = end_range.clone();
+                        let current_end = if potential_end > end_range {
+                            end_range.clone()
+                        } else {
+                            potential_end
+                        };
+
+                        *pos = &current_end + BigUint::one();
+
+                        (current_start, current_end)
+                    };
+
+                    let interval_size = &current_end - &current_start + BigUint::one();
+                    let max_steps = (interval_size.sqrt() + BigUint::one())
+                        .to_usize()
+                        .unwrap_or(std::usize::MAX);
+
+                    println!(
+                        "[+] Thread {:?} buscando: {} - {}",
+                        thread::current().id(), current_start, current_end
+                    );
+
+                    let key = bsgs::bsgs(
+                        &target_public_key_point,
+                        &ProjectivePoint::GENERATOR,
+                        &current_start,
+                        max_steps,
+                    );
+
+                    {
+                        let mut steps = total_steps_tried.lock().unwrap();
+                        *steps += max_steps;
+                    }
+
+                    if let Some(found_key) = key {
+                        {
+                            let mut private_key = private_key_integer.lock().unwrap();
+                            *private_key = Some(found_key.clone());
+                        }
+                        tx.send(found_key.clone()).unwrap();
+                        break;
+                    }
                 }
-            }
-
-            // Calculate the interval size for the current subrange
-            let interval_size = &current_end - &current_start + BigUint::from(1u32);
-
-            // Adjust max_steps based on the interval size
-            let max_steps = (interval_size.sqrt() + BigUint::from(1u32))
-                .to_usize()
-                .unwrap_or(std::usize::MAX);
-
-            println!("[+] Searching: {} - {}", current_start, current_end);
-
-            // Call BSGS with the current subrange
-            let key = bsgs::bsgs(
-                &target_public_key_point,
-                &ProjectivePoint::GENERATOR,
-                &current_start,
-                max_steps,
-            );
-            total_steps_tried += max_steps;
-
-            if let Some(found_key) = key {
-                private_key_integer = Some(found_key);
-                break;
-            }
-            // break
+            });
+            threads.push(thread);
         }
 
-        if let Some(key) = private_key_integer {
+        drop(tx);
+
+        if let Ok(key) = rx.recv() {
             let private_key_hex = format!("{:064x}", key);
             println!("Private key found: {}", private_key_hex);
             println!(
@@ -182,11 +213,15 @@ impl KeySearch {
                 self.compressed_public_key_by_private_key_hex(&private_key_hex)
             );
         } else {
-            println!("Private key not found within the provided range.");
+            println!("Private key not found within the given range.");
+        }
+
+        for thread in threads {
+            thread.join().unwrap();
         }
 
         println!("Elapsed time: {:?}", start_time.elapsed());
-        println!("Total steps tried: {}", total_steps_tried);
+        println!("Total steps attempted: {}", *total_steps_tried.lock().unwrap());
     }
 
     pub fn public_key_address_by_private_key_hex(
@@ -225,7 +260,7 @@ impl KeySearch {
         let public_key_bytes = verifying_key.to_encoded_point(true).as_bytes().to_vec();
         let compressed_public_key_hex = hex::encode(public_key_bytes);
 
-        println!("Public Key (compressed): {}", compressed_public_key_hex);
+        // println!("Public Key (compressed): {}", compressed_public_key_hex);
 
         Some(compressed_public_key_hex)
     }
