@@ -3,6 +3,9 @@ name = "keyripper"
 version = "0.2.0"
 edition = "2021"
 
+[build]
+rustflags = ["-Clinker=rust-lld"]
+
 [dependencies]
 dotenv = "0.15"
 env_logger = "0.11.5"
