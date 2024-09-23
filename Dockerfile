@@ -1,7 +1,10 @@
 FROM rust:latest
 
-RUN apt-get update && \
-    apt-get install -y pkg-config libssl-dev
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    build-essential \
+    ca-certificates
 
 ENV OPENSSL_DIR=/usr/lib/ssl
 ENV OPENSSL_LIB_DIR=/usr/lib/ssl/lib
