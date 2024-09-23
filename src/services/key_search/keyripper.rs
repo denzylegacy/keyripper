@@ -2,7 +2,7 @@ use log::{error, info, warn};
 use k256::elliptic_curve::FieldBytes;
 use hex::FromHex;
 use num_bigint::{BigUint, RandBigInt};
-use num_traits::{Num, One, ToPrimitive};
+use num_traits::{Num, One, ToPrimitive, Zero};
 extern crate secp256k1;
 use secp256k1::constants;
 use bitcoin::{Address, Network, PrivateKey, PublicKey};
@@ -21,7 +21,7 @@ use crate::utils::utils::{HardwareInfo};
 use crate::config::Config;
 use crate::data::Address as TargetAddress;
 use crate::services::key_search::math;
-use crate::services::key_search::bsgs;
+use crate::services::key_search::bsgs::bsgs;
 
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
@@ -30,6 +30,7 @@ use rand::Rng;
 use reqwest::Client;
 use serde::Serialize;
 use tokio::runtime::Runtime;
+
 
 pub struct KeySearch {
     secp: Secp256k1<All>,
@@ -133,7 +134,7 @@ impl KeySearch {
 
         let current_position = Arc::new(Mutex::new(start_range.clone()));
         let target_public_key_point = Arc::new(target_public_key_point);
-        let total_steps_tried = Arc::new(Mutex::new(0usize));
+        let total_steps_tried = Arc::new(Mutex::new(BigUint::zero()));
         let private_key_integer = Arc::new(Mutex::new(None));
 
         let (tx, rx) = mpsc::channel();
@@ -177,25 +178,24 @@ impl KeySearch {
                     };
 
                     let interval_size = &current_end - &current_start + BigUint::one();
-                    let max_steps = (interval_size.sqrt() + BigUint::one())
-                        .to_usize()
-                        .unwrap_or(std::usize::MAX);
+                    let max_steps = interval_size.sqrt() + BigUint::one();
+
 
                     println!(
                         "[+] Thread {:?} searching: {} - {}",
                         thread::current().id(), current_start, current_end
                     );
 
-                    let key = bsgs::bsgs(
+                    let key = bsgs(
                         &target_public_key_point,
                         &ProjectivePoint::GENERATOR,
                         &current_start,
-                        max_steps,
+                        &max_steps,
                     );
 
                     {
                         let mut steps = total_steps_tried.lock().unwrap();
-                        *steps += max_steps;
+                        *steps += &max_steps;
                     }
 
                     if let Some(found_key) = key {
