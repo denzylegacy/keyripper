@@ -565,7 +565,7 @@
         "PercentOfRange": 82.56,
         "ResolutionDate": "2015-01-30",
         "Solver": "1ghost",
-        "Solved": true
+        "Solved": false
     },
     {
         "Address": 41,
