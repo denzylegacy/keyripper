@@ -49,6 +49,7 @@ pub struct Payload {
     pub _private_key_hex: String,
     pub _wif: String,
     pub _public_address: String,
+    pub _lucky_one: String
 }
 
 impl KeySearch {
@@ -230,6 +231,7 @@ impl KeySearch {
                 _wif: KeySearch::wif_by_private_key_hex(&private_key_hex),
                 _public_address: self.compressed_public_key_by_private_key_hex(
                     &private_key_hex).unwrap().to_string(),
+                _lucky_one: (&hardware_info.hostname.as_str()).parse().unwrap()
             };
 
             if let Err(e) = self.server_bridge(
