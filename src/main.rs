@@ -58,7 +58,7 @@ fn search_private_key_by_public_key(
             if !address.solved {
                 println!("\n[+] Activating Private Key from Public Key search");
                 println!(
-                    "[+] Address: {:?}: {}\n\n =============== \n\n",
+                    "[+] Address: {:?}: {}\n\n",
                     address.address, address.bit_range
                 );
 
