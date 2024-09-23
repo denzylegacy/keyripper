@@ -130,7 +130,12 @@ impl KeySearch {
         let total_range = &end_range - &start_range + BigUint::one();
 
         // Subrange Size
-        let subrange_size = BigUint::from(100_000_000_000u64);
+        let subrange_size = BigUint::from(70_000_000u64);
+
+        if total_range < subrange_size {
+            eprintln!("The total range is smaller than the size of the subrange. Adjust the 'subrange_size'.");
+            return;
+        }
 
         let current_position = Arc::new(Mutex::new(start_range.clone()));
         let target_public_key_point = Arc::new(target_public_key_point);
@@ -180,10 +185,11 @@ impl KeySearch {
                     let interval_size = &current_end - &current_start + BigUint::one();
                     let max_steps = interval_size.sqrt() + BigUint::one();
 
-
                     println!(
-                        "[+] Thread {:?} searching: {} - {}",
-                        thread::current().id(), current_start, current_end
+                        "[+] Thread {:?} is processing the range: {} - {}",
+                        thread::current().id(),
+                        current_start,
+                        current_end
                     );
 
                     let key = bsgs(

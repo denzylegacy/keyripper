@@ -57,7 +57,10 @@ fn search_private_key_by_public_key(
         if let Some(address) = addresses.get(i - 1) {
             if !address.solved {
                 println!("\n[+] Activating Private Key from Public Key search");
-                println!("[+] Address: {:?}: {}", address.address, address.bit_range);
+                println!(
+                    "[+] Address: {:?}: {}\n\n =============== \n\n",
+                    address.address, address.bit_range
+                );
 
                 let key_search = KeySearch::new();
 

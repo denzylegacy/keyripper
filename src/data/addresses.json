@@ -495,7 +495,7 @@
         "PercentOfRange": 17.07,
         "ResolutionDate": "2015-01-17",
         "Solver": "1HtaAw",
-        "Solved": true
+        "Solved": false
     },
     {
         "Address": 36,
@@ -565,7 +565,7 @@
         "PercentOfRange": 82.56,
         "ResolutionDate": "2015-01-30",
         "Solver": "1ghost",
-        "Solved": false
+        "Solved": true
     },
     {
         "Address": 41,
