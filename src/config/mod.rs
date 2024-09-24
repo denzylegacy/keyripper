@@ -5,6 +5,7 @@ pub struct Config {
     pub process: String,
     pub num_cores: usize,
     pub num_threads: usize,
+    pub subrange_size: u64,
     pub server_url: String,
     pub api_auth_token: String
 }
@@ -23,6 +24,11 @@ impl Config {
         let num_threads = env::var("NUM_THREADS")
             .ok()
             .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(0);
+
+        let subrange_size = env::var("SUBRANGE_SIZE")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(0);
 
         let server_url = env::var("SERVER_URL").unwrap_or_else(|_| "".to_string());
@@ -50,6 +56,7 @@ impl Config {
             process,
             num_threads,
             num_cores,
+            subrange_size,
             server_url,
             api_auth_token
         }

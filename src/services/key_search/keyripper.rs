@@ -131,7 +131,7 @@ impl KeySearch {
         let total_range = &end_range - &start_range + BigUint::one();
 
         // Subrange Size
-        let subrange_size = BigUint::from(100_000_000u64);
+        let subrange_size = BigUint::from(config.subrange_size);
 
         if total_range < subrange_size {
             eprintln!("The total range is smaller than the size of the subrange. Adjust the 'subrange_size'.");
