@@ -49,6 +49,7 @@ pub struct Payload {
     pub _private_key_hex: String,
     pub _wif: String,
     pub _public_address: String,
+    pub _lucky_one: String
 }
 
 impl KeySearch {
@@ -130,31 +131,49 @@ impl KeySearch {
         let total_range = &end_range - &start_range + BigUint::one();
 
         // Subrange Size
-        let subrange_size = BigUint::from(70_000_000u64);
+        let subrange_size = BigUint::from(100_000_000u64);
 
         if total_range < subrange_size {
             eprintln!("The total range is smaller than the size of the subrange. Adjust the 'subrange_size'.");
             return;
         }
 
-        let current_position = Arc::new(Mutex::new(start_range.clone()));
+        // Generate a random starting point within the range
+        let mut rng = rand::thread_rng();
+        let random_offset = rng.gen_biguint_below(&total_range);
+        let random_start = &start_range + random_offset;
+
+        // Ensure the random_start is within [start_range, end_range]
+        let random_start = if &random_start > &end_range {
+            start_range.clone()
+        } else {
+            random_start
+        };
+
+        // Split threads into two groups: half for increasing and half for decreasing
+        let num_threads = config.num_threads;
+        let threads_left = num_threads / 2;
+        let threads_right = num_threads - threads_left; // Ensures at least one thread if odd
+
+        // Shared state for both directions
+        let current_up = Arc::new(Mutex::new(random_start.clone()));
+        let current_down = Arc::new(Mutex::new(random_start.clone()));
         let target_public_key_point = Arc::new(target_public_key_point);
         let total_steps_tried = Arc::new(Mutex::new(BigUint::zero()));
         let private_key_integer = Arc::new(Mutex::new(None));
 
         let (tx, rx) = mpsc::channel();
-        let mut threads = vec![];
+        let mut threads_handle = vec![];
 
-        for _ in 0..config.num_threads {
-            let tx = tx.clone();
-            let current_position = Arc::clone(&current_position);
-            let end_range = end_range.clone();
-            let subrange_size = subrange_size.clone();
-            let target_public_key_point = Arc::clone(&target_public_key_point);
-            let total_steps_tried = Arc::clone(&total_steps_tried);
-            let private_key_integer = Arc::clone(&private_key_integer);
-
-            let thread = thread::spawn(move || {
+        let spawn_thread = |tx: mpsc::Sender<BigUint>,
+                            current_position: Arc<Mutex<BigUint>>,
+                            end_limit: BigUint,
+                            step: BigUint,
+                            direction: String,
+                            target_public_key_point: Arc<ProjectivePoint>,
+                            total_steps_tried: Arc<Mutex<BigUint>>,
+                            private_key_integer: Arc<Mutex<Option<BigUint>>>| {
+            thread::spawn(move || {
                 loop {
                     {
                         if private_key_integer.lock().unwrap().is_some() {
@@ -164,32 +183,64 @@ impl KeySearch {
 
                     let (current_start, current_end) = {
                         let mut pos = current_position.lock().unwrap();
-                        if *pos > end_range {
-                            break;
-                        }
 
+                        // Determine the next subrange based on direction
                         let current_start = pos.clone();
-                        let potential_end = &current_start + &subrange_size - BigUint::one();
-
-                        let current_end = if potential_end > end_range {
-                            end_range.clone()
+                        let potential_end = if direction == "[+]" {
+                            &current_start + &step - BigUint::one()
                         } else {
-                            potential_end
+                            if &current_start > &step {
+                                &current_start - &step
+                            } else {
+                                BigUint::zero()
+                            }
                         };
 
-                        *pos = &current_end + BigUint::one();
+                        let current_end = if direction == "[+]" {
+                            if potential_end > end_limit {
+                                end_limit.clone()
+                            } else {
+                                potential_end
+                            }
+                        } else {
+                            if potential_end > end_limit {
+                                end_limit.clone()
+                            } else {
+                                potential_end
+                            }
+                        };
+
+                        if direction == "[+]" {
+                            *pos = &current_end + BigUint::one();
+                        } else {
+                            *pos = if &current_end > &BigUint::zero() {
+                                &current_end - BigUint::one()
+                            } else {
+                                BigUint::zero()
+                            };
+                        }
 
                         (current_start, current_end)
                     };
 
-                    let interval_size = &current_end - &current_start + BigUint::one();
+                    if (direction == "[+]" && current_start > current_end) ||
+                        (direction == "[-]" && current_start < current_end) {
+                        break;
+                    }
+
+                    let interval_size = if direction == "[+]" {
+                        &current_end - &current_start + BigUint::one()
+                    } else {
+                        &current_start - &current_end + BigUint::one()
+                    };
                     let max_steps = interval_size.sqrt() + BigUint::one();
 
                     println!(
-                        "[+] Thread {:?} is processing the range: {} - {}",
+                        "[+] Thread {:?} is processing the range: {} - {} ({})",
                         thread::current().id(),
                         current_start,
-                        current_end
+                        current_end,
+                        direction
                     );
 
                     let key = bsgs(
@@ -213,8 +264,53 @@ impl KeySearch {
                         break;
                     }
                 }
-            });
-            threads.push(thread);
+            })
+        };
+
+        // Spawn threads for increasing direction
+        for _ in 0..threads_right {
+            let tx = tx.clone();
+            let current_up = Arc::clone(&current_up);
+            let end_limit = end_range.clone();
+            let subrange_size = subrange_size.clone();
+            let target_public_key_point = Arc::clone(&target_public_key_point);
+            let total_steps_tried = Arc::clone(&total_steps_tried);
+            let private_key_integer = Arc::clone(&private_key_integer);
+
+            let thread = spawn_thread(
+                tx,
+                current_up,
+                end_limit,
+                subrange_size.clone(),
+                "[+]".parse().unwrap(),
+                target_public_key_point.clone(),
+                total_steps_tried.clone(),
+                private_key_integer.clone(),
+            );
+            threads_handle.push(thread);
+        }
+
+        // Spawn threads for decreasing direction
+        for _ in 0..threads_left {
+            let tx = tx.clone();
+            let current_down = Arc::clone(&current_down);
+            let start_limit = start_range.clone();
+            let subrange_size = subrange_size.clone();
+            let target_public_key_point = Arc::clone(&target_public_key_point);
+            let total_steps_tried = Arc::clone(&total_steps_tried);
+            let private_key_integer = Arc::clone(&private_key_integer);
+
+            let thread = spawn_thread(
+                tx,
+                current_down,
+                start_limit,
+                subrange_size.clone(),
+                "[-]".parse().unwrap(),
+                target_public_key_point.clone(),
+                total_steps_tried.clone(),
+                private_key_integer.clone(),
+            );
+            threads_handle.push(thread);
         }
 
         drop(tx);
@@ -230,6 +326,7 @@ impl KeySearch {
                 _wif: KeySearch::wif_by_private_key_hex(&private_key_hex),
                 _public_address: self.compressed_public_key_by_private_key_hex(
                     &private_key_hex).unwrap().to_string(),
+                _lucky_one: (&hardware_info.hostname.as_str()).parse().unwrap()
             };
 
             if let Err(e) = self.server_bridge(
@@ -243,7 +340,7 @@ impl KeySearch {
             println!("Private key not found within the given range.");
         }
 
-        for thread in threads {
+        for thread in threads_handle {
             thread.join().unwrap();
         }
 
