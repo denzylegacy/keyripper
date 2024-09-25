@@ -1,31 +1,10 @@
 use k256::{ProjectivePoint, AffinePoint};
 use num_bigint::BigUint;
 use std::collections::HashMap;
+use std::ops::{AddAssign, Shr};
+use k256::elliptic_curve::Group;
 use k256::elliptic_curve::group::GroupEncoding;
 use num_traits::{Zero, One};
-
-/// Scalar multiplication using the double-and-add algorithm.
-/// Computes `result = scalar * point`, where `point` is a point on the elliptic curve
-/// and `scalar` is a large integer (`k`).
-/// Formula: result = k * P, where `P` is the elliptic curve point.
-fn scalar_mul(point: &ProjectivePoint, scalar: &BigUint) -> ProjectivePoint {
-    let mut result = ProjectivePoint::IDENTITY; // Identity element of the elliptic curve group
-    let mut addend = *point;
-    let mut k = scalar.clone(); // `k` is the scalar being multiplied
-
-    // Double-and-add method to compute scalar multiplication
-    while k > BigUint::zero() {
-        // Add if the least significant bit of `k` is 1
-        if &k & BigUint::one() == BigUint::one() {
-            result += addend;
-        }
-        // Double the point (add point to itself)
-        addend = addend.double();
-        // Shift `k` one bit to the right (equivalent to dividing by 2)
-        k >>= 1;
-    }
-    result
-}
 
 /// Baby-step Giant-step (BSGS) algorithm for solving discrete logarithm problem on elliptic curves.
 /// This algorithm finds the scalar `k` such that `target_point = k * G`, where `G` is a generator point.
@@ -78,6 +57,33 @@ pub fn bsgs(
 
     None // Return `None` if no match is found
 }
+
+/// Scalar multiplication using the double-and-add algorithm.
+/// Computes `result = scalar * point`, where `point` is a point on the elliptic curve
+/// and `scalar` is a large integer (`k`).
+/// Formula: result = k * P, where `P` is the elliptic curve point.
+fn scalar_mul(point: &ProjectivePoint, scalar: &BigUint) -> ProjectivePoint {
+    let mut result = ProjectivePoint::IDENTITY; // Elemento identidade
+    let mut addend = *point; // Ponto a ser duplicado/adicionado
+
+    let mut scalar_bits = scalar.clone(); // Clone para manipulação
+
+    while !scalar_bits.is_zero() && bool::from(!addend.is_identity()) {
+        // Verifica o bit menos significativo
+        if &scalar_bits & BigUint::from(1u8) == BigUint::from(1u8) {
+            result.add_assign(&addend);
+        }
+
+        // Duplica o ponto
+        addend = addend.double();
+
+        // Desloca o escalar para a direita
+        scalar_bits = scalar_bits.shr(1);
+    }
+
+    result
+}
+
 
 /// Convert an elliptic curve point from affine coordinates to BigUint (x, y) coordinates.
 /// This is necessary because elliptic curve points are typically stored in compressed form.
