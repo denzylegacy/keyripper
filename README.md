@@ -1,74 +1,36 @@
 <h1 align="center">keyripper</h1>
 
-**Private Key Finder:** A Rust project designed to search for private keys based on the Bitcoin secp256k1 elliptic curve. This tool utilizes advanced algorithms to explore potential private keys, emphasizing the complexities and security considerations involved in cryptographic key management.
-
----
-
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [Mathematical Background](#mathematical-background)
-3. [Features](#features)
-4. [Installation](#installation)
-    - [Prerequisites](#prerequisites)
-    - [Installing Rust](#installing-rust)
-    - [Cloning the Repository](#cloning-the-repository)
-    - [Setting Up Configuration](#setting-up-configuration)
-    - [Building the Project](#building-the-project)
-5. [Usage](#usage)
-    - [Configuration](#configuration)
-    - [Running the Project](#running-the-project)
-6. [Running in Google Colab](#running-in-google-colab)
-7. [Target Address Structure](#target-address-structure)
-8. [Puzzle Context](#puzzle-context)
-9. [Troubleshooting](#troubleshooting)
-10. [Contributing](#contributing)
-11. [License](#license)
-12. [Acknowledgements](#acknowledgements)
-13. [Contact](#contact)
-
----
-
-## Introduction
-
 **keyripper** is a powerful tool developed in Rust to assist in the recovery of Bitcoin private keys by leveraging the Baby-Step Giant-Step (BSGS) algorithm to solve the discrete logarithm problem on the secp256k1 elliptic curve. This project underscores the importance of robust cryptographic practices and provides insights into the mathematical foundations that secure blockchain technologies.
 
 ---
 
-## Mathematical Background
+**Mathematical Background Summary:**
 
-### Elliptic Curves and secp256k1
+- **Elliptic Curves**: Key structures in cryptography, defined by the equation y² = x³ + ax + b with conditions to avoid singularities.
 
-Elliptic curves are fundamental to modern cryptography, especially in the context of cryptocurrencies like Bitcoin. The secp256k1 curve is defined by the equation:
+- **secp256k1**: A specific elliptic curve used in Bitcoin, defined by y² = x³ + 7 over a 256-bit prime field.
 
-\[ y^2 = x^3 + 7 \]
+- **Key Points**:
+  - **Generator Point (G)**: Starting point for key generation.
+  - **Order (n)**: Number of distinct points generated from G, a large prime.
 
-over the finite field \( \mathbb{F}_p \), where:
+- **Discrete Logarithm Problem (DLP)**: Challenge of finding the integer k such that Q = k * G. Security of systems like Bitcoin relies on the difficulty of solving DLP.
 
-\[ p = \text{FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F}_{16} \]
+- **Baby-Step Giant-Step (BSGS) Algorithm**: Efficient method for solving DLP, reducing complexity from O(n) to O(sqrt(n)).
 
-### Discrete Logarithm Problem (DLP)
+  - **Baby Steps**: Compute and store points G, 2G, 3G, ..., mG.
+  - **Giant Steps**: Compute Q - j * mG and check against the baby steps table for matches.
 
-The security of elliptic curve cryptography (ECC) relies on the difficulty of the Discrete Logarithm Problem:
+- **Steps**:
+  - **Initialization**: Choose m = ceiling(n) and create a hash table.
+  - **Baby Steps Phase**: Store points in the hash table.
+  - **Giant Steps Phase**: Check for matches and calculate k.
 
-Given points \( G \) and \( Q \) on the curve, find the scalar \( k \) such that:
+- **Advantages of BSGS**: Efficient and deterministic.
 
-\[ Q = k \cdot G \]
+- **Limitations**: High memory usage and scalability issues for large n.
 
-where \( \cdot \) denotes scalar multiplication on the elliptic curve.
-
-### Baby-Step Giant-Step (BSGS) Algorithm
-
-The BSGS algorithm is an efficient method to solve the DLP by reducing its complexity from \( O(n) \) to \( O(\sqrt{n}) \). It involves:
-
-1. **Baby Steps:** Precompute and store \( G, 2G, 3G, \ldots, mG \) in a hash table, where \( m = \lceil \sqrt{n} \rceil \).
-2. **Giant Steps:** Compute \( Q - jm \cdot G \) for \( j = 0, 1, 2, \ldots, m \) and check for matches in the hash table.
-
-If a match is found, the scalar \( k \) can be determined as:
-
-\[ k = jm + i \]
-
-where \( i \) is the index from the baby steps.
+- **Optimization Strategies**: Use hash tables, parallelization, and subrange splitting to improve performance.
 
 ---
 
@@ -199,35 +161,6 @@ This command compiles the project in release mode, optimizing for performance. T
 
 ---
 
-### Configuration
-
-Before running `keyripper`, ensure that the `.env` file is properly configured as described in the [Setting Up Configuration](#setting-up-configuration) section.
-
-
-**Example Address JSON (`address.json`):**
-
-```json
-{
-    "Address": 130,
-    "BitRange": "2^129...2^130-1",
-    "PrivateKeyRange": "200000000000000000000000000000000...3ffffffffffffffffffffffffffffffff",
-    "PrivateKeyRangeStart": "200000000000000000000000000000000",
-    "PrivateKeyRangeEnd": "3ffffffffffffffffffffffffffffffff",
-    "PrivateKey(HEX)": "Unknown",
-    "PublicKey(HEX)": "03633cbe3ec02b9401c5effa144c5b4d22f87940259634858fc7e59b1c09937852",
-    "BitcoinAddress": "1Fo65aKq8s8iquMt6weF1rku1moWVEd5Ua",
-    "PercentOfRange": 0.0,
-    "ResolutionDate": "Unknown",
-    "Solver": "Unknown",
-    "Solved": false
-}
-```
-
-**Notes:**
-
-- **PrivateKeyRangeStart & PrivateKeyRangeEnd:** Define the range of private keys to search within. Ensure these values are in hexadecimal format.
-- **PublicKey(HEX):** The public key corresponding to the target Bitcoin address.
-
 **Example Output:**
 
 ```
@@ -277,28 +210,6 @@ Google Colab provides a cloud-based environment to run `keyripper` without local
    ```bash
    !git clone https://github.com/yourusername/keyripper.git
    %cd keyripper
-   ```
-
-5. **Prepare the Address JSON**
-
-   Create an `address.json` file with the target address details:
-
-   ```bash
-   %%writefile address.json
-   {
-       "Address": 130,
-       "BitRange": "2^129...2^130-1",
-       "PrivateKeyRange": "200000000000000000000000000000000...3ffffffffffffffffffffffffffffffff",
-       "PrivateKeyRangeStart": "200000000000000000000000000000000",
-       "PrivateKeyRangeEnd": "3ffffffffffffffffffffffffffffffff",
-       "PrivateKey(HEX)": "Unknown",
-       "PublicKey(HEX)": "03633cbe3ec02b9401c5effa144c5b4d22f87940259634858fc7e59b1c09937852",
-       "BitcoinAddress": "1Fo65aKq8s8iquMt6weF1rku1moWVEd5Ua",
-       "PercentOfRange": 0.0,
-       "ResolutionDate": "Unknown",
-       "Solver": "Unknown",
-       "Solved": false
-   }
    ```
 
 ---
@@ -422,7 +333,7 @@ This project is licensed under the [Apache License 2.0](https://github.com/denzy
 
 ## Contact
 
-For any questions or support, please open an issue on the [GitHub repository](https://github.com/denzylegacy/keyripper/issues) or contact the maintainer at [youremail@example.com](mailto:denzylegacy@proton.me).
+For any questions or support, please open an issue on the [GitHub repository](https://github.com/denzylegacy/keyripper/issues) or contact the maintainer at [denzylegacy@proton.me](mailto:denzylegacy@proton.me).
 
 ---
 
