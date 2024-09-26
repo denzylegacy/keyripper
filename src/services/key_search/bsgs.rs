@@ -1,11 +1,11 @@
 use k256::{ProjectivePoint, AffinePoint};
 use num_bigint::BigUint;
 use std::collections::HashMap;
-use std::ops::{AddAssign, Shr};
+use std::ops::{AddAssign, Sub};
 use k256::elliptic_curve::Group;
 use k256::elliptic_curve::group::GroupEncoding;
 use num_traits::{Zero, One, ToPrimitive};
-use std::ops::Sub;
+use std::ops::Shr;
 
 /// Baby-step Giant-step (BSGS) algorithm for solving discrete logarithm problem on elliptic curves.
 /// This algorithm finds the scalar `k` such that `target_point = k * G`, where `G` is a generator point.
@@ -18,72 +18,66 @@ pub fn bsgs(
     target_point: &ProjectivePoint,
     g: &ProjectivePoint,
     start: &BigUint,
-    max_steps: &BigUint,
+    max_steps: u64,
 ) -> Option<BigUint> {
-    println!("Start scalar: {:?}, Maximum steps: {:?}", start, max_steps);
+    println!("Start scalar: {:?}, Maximum steps: {}", start, max_steps);
 
-    // Initialize a hash map to store baby steps with a capacity equal to `max_steps`.
-    // This hash map will map affine coordinates (x, y) to their corresponding scalar `i`.
-    let mut baby_steps = HashMap::with_capacity(
-        max_steps.to_usize().unwrap_or(0)
-    );
+    // Maps affine coordinates (x, y) to the index `i` (u64).
+    let mut baby_steps: HashMap<(BigUint, BigUint), u64> = HashMap::with_capacity(max_steps as usize);
 
-    // Calculate `current = g * start`, where `g` is the generator point and `start` is the scalar offset.
+    // Calculate `current = g * start`
     let mut current = scalar_mul(g, start);
 
-    // Baby-Step Phase:
-    // // Baby-step phase: Compute all `g^i` for i in the range [0, max_steps], store in a hash map.
-    let mut i = BigUint::zero();
-    while &i < max_steps {
+    // Baby-Step Phase: Compute all `g^i` for `i` in [0, max_steps)
+    for i in 0..max_steps {
         let affine_current = current.to_affine();
         let (x_decimal, y_decimal) = to_biguint_from_affine_point(&affine_current);
 
-        baby_steps.insert((x_decimal, y_decimal), i.clone());
+        baby_steps.insert((x_decimal, y_decimal), i);
 
+        // Advance to the next point: `current += g`
         current += g;
-
-        i += BigUint::one();
     }
 
     // Giant-Step Phase:
-    // Giant-step phase: Compute `target_point - j * g^m` for j in the range [0, max_steps], and check if it matches a baby step
-    // This stride will be used to jump in larger steps during the search.
-    let giant_stride = scalar_mul(g, max_steps);
+    // Compute `giant_stride = g * max_steps`
+    let giant_stride = scalar_mul(g, &BigUint::from(max_steps));
 
+    // Initialize `current` with the target point
     let mut current = target_point.clone();
 
-    let mut j = BigUint::zero();
-
-    while &j < max_steps {
+    // Iterate over `j` from 0 to `max_steps`
+    for j in 0..max_steps {
         let affine_current = current.to_affine();
         let (x_decimal, y_decimal) = to_biguint_from_affine_point(&affine_current);
 
-        if let Some(i) = baby_steps.get(&(x_decimal.clone(), y_decimal.clone())) {
-            // If match found, the result is `k = j * max_steps + i + start`
-            let k = &j * max_steps + i + start;
+        // Check if the current point is in the baby steps
+        if let Some(&i) = baby_steps.get(&(x_decimal.clone(), y_decimal.clone())) {
+            // Calculate `k = j * max_steps + i + start`
+            let j_big = BigUint::from(j);
+            let m_big = BigUint::from(max_steps);
+            let k = &j_big * &m_big + BigUint::from(i) + start;
+
             return Some(k);
         }
 
-        current = current.sub(&giant_stride); // Move to the next giant step by subtracting `g^m`
-
-        j += BigUint::one();
+        // Move to the next giant step: `current -= giant_stride`
+        current = current.sub(&giant_stride);
     }
 
-    None // If no matching scalar `k` is found within the bounds, return `None`.
+    None // If not found, return `None`
 }
 
 /// Scalar multiplication using the double-and-add algorithm.
-/// Computes `result = scalar * point`, where `point` is a point on the elliptic curve
-/// and `scalar` is a large integer (`k`).
-/// Formula: result = k * P, where `P` is the elliptic curve point.
+/// Computes `result = scalar * point`.
 fn scalar_mul(point: &ProjectivePoint, scalar: &BigUint) -> ProjectivePoint {
     let mut result = ProjectivePoint::IDENTITY;
-    let mut addend = *point;
+    let mut addend = point.clone();
 
     let mut scalar_bits = scalar.clone();
 
     while !scalar_bits.is_zero() && bool::from(!addend.is_identity()) {
-        if &scalar_bits & BigUint::from(1u8) == BigUint::from(1u8) {
+        if &scalar_bits & BigUint::one() == BigUint::one() {
             result.add_assign(&addend);
         }
 
@@ -95,9 +89,7 @@ fn scalar_mul(point: &ProjectivePoint, scalar: &BigUint) -> ProjectivePoint {
     result
 }
 
-
-/// Convert an elliptic curve point from affine coordinates to BigUint (x, y) coordinates.
-/// This is necessary because elliptic curve points are typically stored in compressed form.
+/// Convert an affine point to BigUint coordinates (x, y).
 fn to_biguint_from_affine_point(point: &AffinePoint) -> (BigUint, BigUint) {
     let point_bytes = point.to_bytes();
 

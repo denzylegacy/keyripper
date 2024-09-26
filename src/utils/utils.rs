@@ -9,11 +9,12 @@ use bitcoin::secp256k1::Secp256k1;
 use num_cpus;
 
 pub fn introduction() {
-    println!("\x1b[38;2;250;128;114m   ╔═════════════════════════════════════════════════╗");
-    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m          KeryRypper v0.2.0 - Satoshi Quest           \x1b[0m\x1b[38;2;250;128;114m║");
-    println!("\x1b[38;2;250;128;114m║\x1b[0m\x1b[1m\x1b[32m                     by Denzy Legacy                  \x1b[0m\x1b[38;2;250;128;114m║");
-    println!("\x1b[38;2;250;128;114m   ╚═════════════════════════════════════════════════╝\x1b[0m");
+    println!("\x1b[38;2;173;216;230m   ╔═════════════════════════════════════════════════╗");
+    println!("\x1b[38;2;173;216;230m║\x1b[0m\x1b[1m\x1b[38;2;173;216;230m          keyrypper v0.3.0 - Satoshi Quest           \x1b[0m\x1b[38;2;173;216;230m║");
+    println!("\x1b[38;2;173;216;230m║\x1b[0m\x1b[1m\x1b[38;2;173;216;230m                     by Denzy Legacy                  \x1b[0m\x1b[38;2;173;216;230m║");
+    println!("\x1b[38;2;173;216;230m   ╚═════════════════════════════════════════════════╝\x1b[0m");
 }
+
 
 pub fn import_addresses(file_path: &str) -> Result<Vec<Address>, Box<dyn std::error::Error>> {
     let file = File::open(Path::new(file_path))?;
