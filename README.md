@@ -1,5 +1,3 @@
-# keyripper
-
 <h1 align="center">keyripper</h1>
 
 **Private Key Finder:** A Rust project designed to search for private keys based on the Bitcoin secp256k1 elliptic curve. This tool utilizes advanced algorithms to explore potential private keys, emphasizing the complexities and security considerations involved in cryptographic key management.
