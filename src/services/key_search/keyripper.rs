@@ -49,7 +49,6 @@ pub struct Payload {
     pub _private_key_hex: String,
     pub _wif: String,
     pub _public_address: String,
-    pub _lucky_one: String
 }
 
 impl KeySearch {
@@ -78,26 +77,26 @@ impl KeySearch {
     ) {
         let start_time = std::time::Instant::now();
 
-        // Configuration of the SECP256k1 Elliptic Curve
+        // Elliptic Curve Configuration SECP256k1
         let a = BigUint::from(0u32);
         let b = BigUint::from(7u32);
         let p = BigUint::from_str_radix(
             "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F", 16
         ).unwrap();
 
-        // Retrieving the public key
+        // Public key recovery
         let public_key_x = BigUint::from_str_radix(
             &address.public_key_hex.as_str()[2..], 16
-        ).expect("Error converting public_key_x to integer!");
+        ).expect("Error converting public_key_x to whole number!");
 
         let mut y_square = (
             &public_key_x * &public_key_x * &public_key_x + &a * &public_key_x + &b
         ) % &p;
 
         let mut public_key_y = math::sqrt_mod_prime(&y_square, &p)
-            .expect("Could not find a valid modular square root!");
+            .expect("Couldn't find a valid modular square root!");
 
-        // Check the prefix of the public key
+        // Public Key Prefix Verification
         if (address.public_key_hex.as_str().starts_with("02") &&
             &public_key_y % 2u8 != BigUint::from(0u32)) ||
             (address.public_key_hex.as_str().starts_with("03") &&
@@ -105,12 +104,12 @@ impl KeySearch {
             public_key_y = &p - &public_key_y;
         }
 
-        // Create the public key point on the curve
+        // Creating the public key point on the curve
         let x_bytes = public_key_x.to_bytes_be();
         let y_bytes = public_key_y.to_bytes_be();
 
         let mut encoded_point = Vec::with_capacity(65);
-        encoded_point.push(0x04); // Uncompressed prefix
+        encoded_point.push(0x04); // Uncompressed Prefix
         encoded_point.extend_from_slice(&x_bytes);
         encoded_point.extend_from_slice(&y_bytes);
 
@@ -119,61 +118,38 @@ impl KeySearch {
         let target_public_key_point = ProjectivePoint::from_encoded_point(&encoded_point)
             .expect("Failed to create public key point");
 
+        // Converting the hexadecimal range to decimal
         let start_range = BigUint::from_str_radix(
             address.private_key_range_start.as_str(), 16
-        ).expect("Invalid start range");
+        ).expect("Invalid Start Range");
 
         let end_range = BigUint::from_str_radix(
             address.private_key_range_end.as_str(), 16
-        ).expect("Invalid end range");
+        ).expect("Invalid End Range");
 
         let total_range = &end_range - &start_range + BigUint::one();
 
-        // Subrange size
-        let subrange_size = BigUint::from(config.subrange_size);
+        // Subrange Size
+        let subrange_size = BigUint::from(100_000_000_000u64);
 
-        if total_range < subrange_size {
-            eprintln!("The total range is smaller than the subrange size. Adjust the 'subrange_size'.");
-            return;
-        }
-
-        // Generate a random starting point within the range
-        let mut rng = rand::thread_rng();
-        let random_offset = rng.gen_biguint_below(&total_range);
-        let random_start = &start_range + random_offset;
-
-        // Ensure that random_start is within [start_range, end_range]
-        let random_start = if &random_start > &end_range {
-            start_range.clone()
-        } else {
-            random_start
-        };
-
-        // Split threads into two groups: half for incrementing and half for decrementing
-        let num_threads = config.num_threads;
-        let threads_left = num_threads / 2;
-        let threads_right = num_threads - threads_left;
-
-        // Shared state for both directions
-        let current_up = Arc::new(Mutex::new(random_start.clone()));
-        let current_down = Arc::new(Mutex::new(random_start.clone()));
+        let current_position = Arc::new(Mutex::new(start_range.clone()));
         let target_public_key_point = Arc::new(target_public_key_point);
-        let total_steps_tried = Arc::new(Mutex::new(0u64)); // Changed to `u64`
+        let total_steps_tried = Arc::new(Mutex::new(BigUint::zero()));
         let private_key_integer = Arc::new(Mutex::new(None));
 
         let (tx, rx) = mpsc::channel();
-        let mut threads_handle = vec![];
+        let mut threads = vec![];
 
-        // Function to spawn threads
-        let spawn_thread = |tx: mpsc::Sender<BigUint>,
-                            current_position: Arc<Mutex<BigUint>>,
-                            end_limit: BigUint,
-                            step: BigUint,
-                            direction: String,
-                            target_public_key_point: Arc<ProjectivePoint>,
-                            total_steps_tried: Arc<Mutex<u64>>,
-                            private_key_integer: Arc<Mutex<Option<BigUint>>>| {
-            thread::spawn(move || {
+        for _ in 0..config.num_threads {
+            let tx = tx.clone();
+            let current_position = Arc::clone(&current_position);
+            let end_range = end_range.clone();
+            let subrange_size = subrange_size.clone();
+            let target_public_key_point = Arc::clone(&target_public_key_point);
+            let total_steps_tried = Arc::clone(&total_steps_tried);
+            let private_key_integer = Arc::clone(&private_key_integer);
+
+            let thread = thread::spawn(move || {
                 loop {
                     {
                         if private_key_integer.lock().unwrap().is_some() {
@@ -183,76 +159,43 @@ impl KeySearch {
 
                     let (current_start, current_end) = {
                         let mut pos = current_position.lock().unwrap();
-
-                        // Determine the next subrange based on the direction
-                        let current_start = pos.clone();
-                        let potential_end = if direction == "[+]" {
-                            &current_start + &step - BigUint::one()
-                        } else {
-                            if &current_start > &step {
-                                &current_start - &step
-                            } else {
-                                BigUint::zero()
-                            }
-                        };
-
-                        let current_end = if direction == "[+]" {
-                            if potential_end > end_limit {
-                                end_limit.clone()
-                            } else {
-                                potential_end
-                            }
-                        } else {
-                            if potential_end > end_limit {
-                                end_limit.clone()
-                            } else {
-                                potential_end
-                            }
-                        };
-
-                        if direction == "[+]" {
-                            *pos = &current_end + BigUint::one();
-                        } else {
-                            *pos = if &current_end > &BigUint::zero() {
-                                &current_end - BigUint::one()
-                            } else {
-                                BigUint::zero()
-                            };
+                        if *pos > end_range {
+                            break;
                         }
+
+                        let current_start = pos.clone();
+                        let potential_end = &current_start + &subrange_size - BigUint::one();
+
+                        let current_end = if potential_end > end_range {
+                            end_range.clone()
+                        } else {
+                            potential_end
+                        };
+
+                        *pos = &current_end + BigUint::one();
 
                         (current_start, current_end)
                     };
 
-                    if (direction == "[+]" && current_start > current_end) ||
-                        (direction == "[-]" && current_start < current_end) {
-                        break;
-                    }
+                    let interval_size = &current_end - &current_start + BigUint::one();
+                    let max_steps = interval_size.sqrt() + BigUint::one();
 
-                    let interval_size = if direction == "[+]" {
-                        &current_end - &current_start + BigUint::one()
-                    } else {
-                        &current_start - &current_end + BigUint::one()
-                    };
-                    let max_steps = interval_size.sqrt().to_u64().unwrap_or(0) + 1;
 
                     println!(
-                        "{} {:?} is processing the range: {} - {}",
-                        direction,
-                        thread::current().id(),
-                        current_start,
-                        current_end
+                        "[+] Thread {:?} searching: {} - {}",
+                        thread::current().id(), current_start, current_end
                     );
 
                     let key = bsgs(
                         &target_public_key_point,
                         &ProjectivePoint::GENERATOR,
                         &current_start,
-                        max_steps,
+                        &max_steps,
                     );
 
                     {
                         let mut steps = total_steps_tried.lock().unwrap();
-                        *steps += max_steps;
+                        *steps += &max_steps;
                     }
 
                     if let Some(found_key) = key {
@@ -264,53 +207,8 @@ impl KeySearch {
                         break;
                     }
                 }
-            })
-        };
-
-        // Spawn threads for increasing direction
-        for _ in 0..threads_right {
-            let tx = tx.clone();
-            let current_up = Arc::clone(&current_up);
-            let end_limit = end_range.clone();
-            let subrange_size = subrange_size.clone();
-            let target_public_key_point = Arc::clone(&target_public_key_point);
-            let total_steps_tried = Arc::clone(&total_steps_tried);
-            let private_key_integer = Arc::clone(&private_key_integer);
-
-            let thread = spawn_thread(
-                tx,
-                current_up,
-                end_limit,
-                subrange_size.clone(),
-                "[+]".to_string(),
-                target_public_key_point.clone(),
-                total_steps_tried.clone(),
-                private_key_integer.clone(),
-            );
-            threads_handle.push(thread);
-        }
-
-        // Spawn threads for decreasing direction
-        for _ in 0..threads_left {
-            let tx = tx.clone();
-            let current_down = Arc::clone(&current_down);
-            let start_limit = start_range.clone();
-            let subrange_size = subrange_size.clone();
-            let target_public_key_point = Arc::clone(&target_public_key_point);
-            let total_steps_tried = Arc::clone(&total_steps_tried);
-            let private_key_integer = Arc::clone(&private_key_integer);
-
-            let thread = spawn_thread(
-                tx,
-                current_down,
-                start_limit,
-                subrange_size.clone(),
-                "[-]".to_string(),
-                target_public_key_point.clone(),
-                total_steps_tried.clone(),
-                private_key_integer.clone(),
-            );
-            threads_handle.push(thread);
+            });
+            threads.push(thread);
         }
 
         drop(tx);
@@ -326,21 +224,20 @@ impl KeySearch {
                 _wif: KeySearch::wif_by_private_key_hex(&private_key_hex),
                 _public_address: self.compressed_public_key_by_private_key_hex(
                     &private_key_hex).unwrap().to_string(),
-                _lucky_one: (&hardware_info.hostname.as_str()).parse().unwrap()
             };
 
             if let Err(e) = self.server_bridge(
                 &config.server_url, &config.api_auth_token, &payload) {
-                eprintln!("Failed to send data: {}", e);
+                eprintln!("Failed to send the data: {}", e);
             } else {
                 println!("Data successfully sent to the server.");
             }
 
         } else {
-            println!("Private key not found within the provided range.");
+            println!("Private key not found within the given range.");
         }
 
-        for thread in threads_handle {
+        for thread in threads {
             thread.join().unwrap();
         }
 
